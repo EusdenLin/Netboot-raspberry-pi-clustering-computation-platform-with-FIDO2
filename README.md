@@ -62,4 +62,21 @@ wget https://github.com/makerdiary/nrf52840-mdk-usb-dongle/raw/master/firmware/O
 
 ### Demo
 webauthn.io is a website for you to verify whether your security keys are flashed successfully or not.
+
 Otherwise, you can use this security key to login to your google account. (warning: if you only got one security key, I highly recommend you to test it on an unimaportant account.)
+
+## An easy website for FIDO2 authentication
+
+> I used py_webauthn and Flask to setup the authentication website.
+
+Running the commands below to setup the flask server:
+```
+cd ./py_webauthn
+flask run --host=0.0.0.0 
+```
+
+After that, you can open your browser and browse ```http://localhost:5000```.
+
+When you get into the page, you can either register or login to this website. Though I didn't make a database for this website, this server can only remember on user at once, that is as long as a new user is register , the old one cannot login anymore.
+
+  
