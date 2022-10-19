@@ -79,4 +79,41 @@ After that, you can open your browser and browse ```http://localhost:5000```.
 
 When you get into the page, you can either register or login to this website. Though I didn't make a database for this website, this server can only remember on user at once, that is as long as a new user is register , the old one cannot login anymore.
 
-  
+## PXE boot Raspberry Pi
+
+> I followed [this page](https://williamlam.com/2020/07/two-methods-to-network-boot-raspberry-pi-4.html) to setup the eeprom of Raspberry Pi and dnsmasq, dns servers.  
+
+### Raspberry Pi spec
+
+RAM: 8GB
+model: 4b
+
+### Raspberry Pi Setup
+1. Download and install the Raspberry Pi Imager Tool for your OS.
+2. Flash your SD card with the imager tool, I choosed Raspbian OS Lite(latest version) as the system I want to boot RPI.
+3. You can either enable SSH access through imager tool(while flashing OS to the sd card), or you can enable SSH by running the following commands:
+```
+systemctl start ssh
+```
+4. Upgrade and update apt.
+```
+sudo apt update
+sudo apt full-upgrade
+```
+5. Download and apply the RPI eeprom which supports network booting. Also change the boot order. 
+```
+PI_EEPROM_VERSION=pieeprom-2020-06-15
+wget https://github.com/raspberrypi/rpi-eeprom/raw/master/firmware/beta/${PI_EEPROM_VERSION}.bin
+sudo rpi-eeprom-config ${PI_EEPROM_VERSION}.bin > bootconf.txt
+sed -i 's/BOOT_ORDER=.*/BOOT_ORDER=0xf241/g' bootconf.txt
+sudo rpi-eeprom-config --out ${PI_EEPROM_VERSION}-netboot.bin --config bootconf.txt ${PI_EEPROM_VERSION}.bin
+sudo rpi-eeprom-update -d -f ./${PI_EEPROM_VERSION}-netboot.bin
+```
+6. Retrieve your Raspberry Pi serial number and MAC address, they will be used.
+```
+cat /proc/cpuinfo | grep Serial | awk -F ': ' '{print $2}' | tail -c 8 # your RPI serial number
+ip addr show eth0 | grep ether | awk '{print $2}' # your MAC Address
+```
+Then you can shutdown and remove SD card from your Raspberry PI.
+
+### Setup DHCP, TFTP, NFS server
