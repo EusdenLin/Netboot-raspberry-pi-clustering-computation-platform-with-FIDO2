@@ -212,3 +212,42 @@ Please check systemctl status dnsmasq to see if your dnsmasq runs properly.
 Or run ```dnsmasq --test``` to see if there is syntax error in your configuration file or not.
 Typo in /etc/exports, /etc/fstab might cause RPI unable to find the dnsmasq server.
 
+## Authentication in terminal through libfido2
+
+> Followed https://github.com/Yubico/libfido2 and https://developers.yubico.com/libfido2/ to implement the authenticator script.
+
+### server-side 
+
+1. Run the Flask server.
+```
+cd libfido2/server
+flask run --host=0.0.0.0
+```
+
+
+### client-side
+#### Registration
+1. Plugin your security key.
+
+2. Run the registration script.
+``` 
+cd libfido2/client
+bash register.sh <username>
+```
+3. The light on the security key shold blink, then click the button on the security key.
+
+4. If there is no CRED_ERR message, the registration is done.
+ 
+#### Registration
+1. Plugin your security key.
+
+2. Run the registration script.
+``` 
+cd libfido2/client
+bash login.sh <username>
+```
+3. The light on the security key shold blink, then click the button on the security key.
+
+4. If there is no CRED_ERR message, the authentication is done.
+
+### Trouble shoot
