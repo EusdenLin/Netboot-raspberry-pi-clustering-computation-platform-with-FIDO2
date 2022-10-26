@@ -208,5 +208,7 @@ The ideal way is separate the dhcp server and tftp server, the ip of your interf
 Firstly you should make sure you followed the whole tutorial to netboot. You might lost some key firmware such as the latest start4.elf or fixup4.dat, so RPI cannot execute boot process properly.
 
 * RPI doesn't find the dhcp server.
-Please check systemctl status dnsmasq to see if your /etc/dnsmasq.conf runs properly.
+Please check systemctl status dnsmasq to see if your dnsmasq runs properly.
 Or run ```dnsmasq --test``` to see if there is syntax error in your configuration file or not.
+Typo in /etc/exports, /etc/fstab might cause RPI unable to find the dnsmasq server.
+

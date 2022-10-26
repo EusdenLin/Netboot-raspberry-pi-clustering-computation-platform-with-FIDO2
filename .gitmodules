@@ -1,0 +1,4 @@
+[submodule "OpenSK"]
+  path = OpenSK
+  url = https://github.com/google/OpenSK.git
+  branch = stable
