@@ -117,3 +117,96 @@ ip addr show eth0 | grep ether | awk '{print $2}' # your MAC Address
 Then you can shutdown and remove SD card from your Raspberry PI.
 
 ### Setup DHCP, TFTP, NFS server
+1.  Install the following packages.
+```
+sudo su # It is much easier to follow the following commands if the user is root.
+apt update
+apt install -y nfs-kernel-server dnsmasq kpartx unzip
+```
+
+2. Download the latest Raspberry Pi OS and unzip it
+```
+wget -O raspbian_lite_latest.zip https://downloads.raspberrypi.org/raspbian_lite_latest
+unzip raspbian_lite_latest.zip
+```
+
+3. Load raspbian filesystem by kpartx, then mount it.
+```
+kpartx -a -v *.img
+mkdir bootmnt
+mount rootmnt
+mount /dev/mapper/loop0p1 bootmnt/ # if might not be loop0p1, you can find the correct partition from kpartx log
+mount /dev/mapper/loop0p2 rootmnt/ 
+```
+
+4. Copy the filesystem to nfs-server and tftp server folder.
+```
+PI_SERIAL = ******** # the serial number from 'Raspberry Pi Setup' step 6.
+KICKSTART_IP = xx.xx.xx.xx # the IP of dhcp server
+mkdir -p /srv/nfs/rpi4-${PI_SERIAL}
+mkdir -p /srv/tftpboot/${PI_SERIAL}
+cp -a rootmnt/* /srv/nfs/rpi4-${PI_SERIAL}/
+cp -a bootmnt/* /srv/nfs/rpi4-${PI_SERIAL}/boot/
+```
+
+5. Replace the default rPI firmware files with the latest version
+```
+rm /srv/nfs/rpi4-${PI_SERIAL}/boot/start4.elf
+rm /srv/nfs/rpi4-${PI_SERIAL}/boot/fixup4.dat
+wget https://github.com/Hexxeh/rpi-firmware/raw/stable/start4.elf -P /srv/nfs/rpi4-${PI_SERIAL}/boot/
+wget https://github.com/Hexxeh/rpi-firmware/raw/stable/fixup4.dat -P /srv/nfs/rpi4-${PI_SERIAL}/boot/
+```
+
+6. Setup the NFS export and dnsmasq configuration
+```
+echo "/srv/nfs/rpi4-${PI_SERIAL}/boot /srv/tftpboot/${PI_SERIAL} none defaults,bind 0 0" >> /etc/fstab
+echo "/srv/nfs/rpi4-${PI_SERIAL} *(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
+
+cat > /etc/dnsmasq.conf << EOF
+dhcp-range=xx.xx.xx.xx
+log-dhcp
+enable-tftp
+tftp-root=/srv/tftpboot
+pxe-service=0,"Raspberry Pi Boot"
+EOF # You can either modify /etc/dnsmasq.conf here, remember the dhcp-range should be in the same subnet with dhcpserver.
+mount /srv/tftpboot/${PI_SERIAL}/
+```
+
+7. Enable ssh to RPI, setup the nfs client info so that the nfs client can fetch its filesystem.
+```
+touch /srv/nfs/rpi4-${PI_SERIAL}/boot/ssh
+sed -i /UUID/d /srv/nfs/rpi4-${PI_SERIAL}/etc/fstab
+echo "console=serial0,115200 console=tty root=/dev/nfs nfsroot=${KICKSTART_IP}:/srv/nfs/rpi4-${PI_SERIAL},vers=3 rw ip=dhcp rootwait elevator=deadline" > /srv/nfs/rpi4-${PI_SERIAL}/boot/cmdline.txt
+```
+
+8. Enable and start the services
+```
+systemctl enable dnsmasq
+systemctl enable rpcbind
+systemctl enable nfs-server
+systemctl start dnsmasq
+systemctl start rpcbind
+systemctl start nfs-server
+```
+
+9. Since I directly connect Raspberry Pi to my laptop through a cable. I need to define netmask and IP for my network interface.
+```
+ip addr add xx.xx.xx.xx/xx dev <if_name> # the KICKSTART_IP, netmask and your network interface name.
+```
+
+10. Now plug in power, cable. We are ready to boot RPI OS over network.
+
+Trouble shoot:
+
+* The IP of my interface disappear several times.
+
+There might be some applications would reset your IP, you can check ```journalctl -xe``` to see what application did so. And disable the application.
+
+The ideal way is separate the dhcp server and tftp server, the ip of your interface would be stable.
+
+* Stuck at some init process...
+Firstly you should make sure you followed the whole tutorial to netboot. You might lost some key firmware such as the latest start4.elf or fixup4.dat, so RPI cannot execute boot process properly.
+
+* RPI doesn't find the dhcp server.
+Please check systemctl status dnsmasq to see if your /etc/dnsmasq.conf runs properly.
+Or run ```dnsmasq --test``` to see if there is syntax error in your configuration file or not.
